@@ -1,0 +1,46 @@
+---
+title: "get subread count table from raw output"
+author: "Aaron Francis"
+date: "April, 2024"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_depth: '3'
+    code_folding: show
+---
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+require(knitr)
+knitr::opts_chunk$set(error = T)
+```
+
+## Libraries
+
+```{r, message=FALSE}
+# setwd("/ix/djishnu/Aaron_F/code/DESeq2")
+# source("funcs.R")
+```
+
+## Read in Data
+
+```{r pressure, echo=FALSE}
+setwd("/ix/djishnu/Aaron_F/morgan_satarupa_RNAseq/Code/exon_analysis/Data/feature_counts_output_exons")
+f_name <- "mRNA_raw_reads.txt"
+o_name <- "mRNA_raw_reads.csv"
+data <- read.table(f_name, sep="\t", skip=1, header=TRUE)
+subset_data <- data[,c(1, 7:ncol(data))]
+
+```
+
+## Remake column names
+
+```{r}
+# Extract characters between 7th and 8th periods in column names
+new_col_names <- sapply(strsplit(names(subset_data)[-1], "\\."), function(x) x[9])
+# new_col_names <- sapply(new_col_names, function(x) substr(x, 1, nchar(x) - 5), USE.NAMES=FALSE)
+new_col_names <- c(colnames(subset_data)[1], new_col_names)
+colnames(subset_data) <- new_col_names
+write.csv(subset_data, o_name, row.names=FALSE)
+
+```

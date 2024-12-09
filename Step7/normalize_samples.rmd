@@ -1,0 +1,101 @@
+---
+title: "Sample comparisons"
+author: "Aaron Francis"
+date: "March, 2024"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_depth: '3'
+    code_folding: show
+---
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+require(knitr)
+knitr::opts_chunk$set(error = T)
+```
+
+## Libraries
+
+```{r, message=FALSE}
+source("/ix/djishnu/Aaron_F/morgan_satarupa_RNAseq/Code/exon_analysis/Step7/funcs.R")
+```
+
+## Read in Data
+
+```{r pressure, echo=FALSE}
+#### inputs:
+exp_num <- "1"
+date <- "YYYYMMDD"
+if (exp_num=="1") {
+    sample_compare_dir <- "/ix/djishnu/Aaron_F/morgan_satarupa_RNAseq/Code/exon_analysis/Results/IL33"
+    data_f <- "/ix/djishnu/Aaron_F/morgan_satarupa_RNAseq/Code/exon_analysis/Data/feature_counts_output_exons/mRNA_raw_reads_named_exp1_removedSamples.csv"
+    norm_count_f <- paste0(date, "_deseq2_normalized_RNAseq_counts_exp1_removedSamples.csv")
+}
+else{
+    sample_compare_dir <- "/ix/djishnu/Aaron_F/morgan_satarupa_RNAseq/Code/exon_analysis/Results/Staph"
+    data_f <- "/ix/djishnu/Aaron_F/morgan_satarupa_RNAseq/Code/exon_analysis/Data/feature_counts_output_exons/mRNA_raw_reads_named_exp2_removedSamples.csv"
+    norm_count_f <- paste0(date, "_deseq2_normalized_RNAseq_counts_exp2_removedSamples.csv")
+}
+
+
+#### start main
+setwd(sample_compare_dir)
+# read in counts
+data <- read.csv(data_f)
+
+# remove duplicate rows from counts
+geneIds <- data$Geneid
+dups <- c(which(duplicated(geneIds)))
+if (!length(dups)==0) {
+  data <- data[-dups,]
+}
+
+# make data into matrix
+rownames(data) <- data$Geneid
+data <- data[,2:ncol(data)]
+data <- as.matrix(data)
+
+# Check if all elements in the dataframe are numeric
+all_numeric <- all(sapply(data, is.numeric))
+
+# Print the result
+print(sprintf("data is all numeric: %s", all_numeric))
+data <- as.data.frame(data)
+
+# get covariate matrix
+counts_cols <- colnames(data)
+covs <- as.data.frame(splitNamesByToken(counts_cols))
+# colnames(covs) <- c("Stimulation", "Dosage", "Genotype", "Time", "Replicate", "Experiment")
+colnames(covs) <- c("Stimulation", "Genotype", "Time", "Experiment", "Replicate")
+rownames(covs) <- colnames(data)
+
+# add same sample designation
+covs$Sample <- paste(covs$Stimulation, covs$Genotype, covs$Time, sep="_")
+
+```
+
+## Data checks
+
+```{r}
+# Check for NAs in each column and get the total count
+na_count_per_column <- colSums(is.na(data))
+
+# Check if there are any NAs by summing the counts
+any_na <- any(na_count_per_column > 0)
+
+# Print the result
+print(sprintf("data contains NAs: %s", any_na))
+
+```
+## Normalize data
+
+
+```{r}
+dir.create(sample_compare_dir, recursive = TRUE, showWarnings = FALSE)
+setwd(sample_compare_dir)
+sf=getSizeFactors(data) #DESeq2 function for getting size factors (normalizing for rna seq depth and rna composition)
+norm_counts=log2(sweep(data+1, 2, sf, "/")+1) # normalize using size factors
+write.csv(norm_counts, norm_count_f)
+
+```
